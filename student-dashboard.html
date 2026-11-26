@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#19152f">
+    <title>Student learning | Learn Flow</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-nav">
+            <a class="app-brand" href="/"><img src="/image/img1.png" alt=""> Learn Flow <span class="badge green">Student</span></a>
+            <nav class="app-links" aria-label="Student navigation">
+                <a href="#available-courses">Courses</a>
+                <a href="#my-learning">My learning</a>
+                <a href="/logout">Sign out</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-wrap">
+        <div class="page-heading">
+            <div>
+                <div class="eyebrow">Your learning space</div>
+                <h1 id="welcome-title">Explore what's next.</h1>
+                <p>Browse available courses, meet the staff teaching them, and enroll when you're ready.</p>
+            </div>
+        </div>
+        <section id="available-courses">
+            <div class="page-heading"><div><h2>Available courses</h2><p>Course and instructor information is read-only. Enrollment is saved to your account.</p></div></div>
+            <div id="course-list" class="card-grid" aria-live="polite">
+                <div class="empty-state">Loading courses...</div>
+            </div>
+        </section>
+        <section id="my-learning" style="margin-top:42px">
+            <div class="page-heading"><div><h2>My learning</h2><p>Your enrolled courses are listed here.</p></div></div>
+            <div id="enrollment-list" class="card-grid" aria-live="polite">
+                <div class="empty-state">Loading your enrollments...</div>
+            </div>
+        </section>
+        <p id="student-message" class="message" role="status"></p>
+    </main>
+    <script>
+        const courseList = document.getElementById("course-list");
+        const enrollmentList = document.getElementById("enrollment-list");
+        const message = document.getElementById("student-message");
+
+        async function getJSON(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "/student.html";
+                }
+                throw new Error(result.detail || "Unable to load data.");
+            }
+            return result;
+        }
+
+        function addText(parent, tag, text, className) {
+            const element = document.createElement(tag);
+            element.textContent = text == null ? "" : String(text);
+            if (className) {
+                element.className = className;
+            }
+            parent.appendChild(element);
+            return element;
+        }
+
+        function formatDate(value) {
+            if (!value) {
+                return "";
+            }
+            return new Date(value).toLocaleDateString();
+        }
+
+        function renderEnrollments(enrollments) {
+            enrollmentList.replaceChildren();
+            if (!enrollments.length) {
+                addText(enrollmentList, "div", "You haven't enrolled in a course yet.", "empty-state");
+                return;
+            }
+            enrollments.forEach((enrollment) => {
+                const card = addText(enrollmentList, "article", "", "course-card");
+                addText(card, "span", enrollment.status || "Enrolled", "badge green");
+                addText(card, "h2", enrollment.course_name || "Course");
+                addText(card, "p", "Enrollment date: " + (formatDate(enrollment.enroll_date) || "Today"));
+            });
+        }
+
+        function renderCourses(courses, staff, enrollments) {
+            courseList.replaceChildren();
+            if (!courses.length) {
+                addText(courseList, "div", "No courses are available yet. Please check back soon.", "empty-state");
+                return;
+            }
+            const staffById = new Map(staff.map((member) => [Number(member.staff_id), member]));
+            const enrolledIds = new Set(enrollments.map((item) => Number(item.course_id)));
+
+            courses.forEach((course) => {
+                const card = addText(courseList, "article", "", "course-card");
+                addText(card, "span", course.technology || "Course", "badge");
+                addText(card, "h2", course.course_name || "Course");
+                addText(card, "p", course.description || "Details will be added soon.");
+                const meta = addText(card, "div", "", "course-meta");
+                addText(meta, "span", course.course_duration || "Flexible schedule");
+                addText(meta, "span", new Intl.NumberFormat("en-IN", {
+                    style: "currency",
+                    currency: "INR",
+                    maximumFractionDigits: 0
+                }).format(Number(course.cost || 0)));
+
+                const instructor = staffById.get(Number(course.staff_id));
+                const staffDetails = addText(card, "div", "", "staff-detail");
+                addText(staffDetails, "strong", instructor ? instructor.staff_name : "Instructor profile pending");
+                if (instructor) {
+                    addText(staffDetails, "p", instructor.specialization || "Instructor");
+                    if (instructor.email) {
+                        addText(staffDetails, "p", instructor.email);
+                    }
+                    if (instructor.phno) {
+                        addText(staffDetails, "p", String(instructor.phno));
+                    }
+                } else {
+                    addText(staffDetails, "p", "The course instructor will be listed here once assigned by an administrator.");
+                }
+
+                const button = addText(
+                    card,
+                    "button",
+                    enrolledIds.has(Number(course.course_id)) ? "Already enrolled" : "Enroll in course"
+                );
+                button.type = "button";
+                button.disabled = enrolledIds.has(Number(course.course_id));
+                button.addEventListener("click", async () => {
+                    button.disabled = true;
+                    try {
+                        await getJSON("/enroll", {
+                            method: "POST",
+                            headers: {"Content-Type": "application/json"},
+                            body: JSON.stringify({course_id: course.course_id})
+                        });
+                        message.textContent = "Enrollment saved.";
+                        message.className = "message success";
+                        await loadStudentDashboard();
+                    } catch (error) {
+                        message.textContent = error.message;
+                        message.className = "message error";
+                        button.disabled = false;
+                    }
+                });
+            });
+        }
+
+        async function loadStudentDashboard() {
+            try {
+                const [user, courses, staff, enrollments] = await Promise.all([
+                    getJSON("/auth/me"),
+                    getJSON("/course"),
+                    getJSON("/staff"),
+                    getJSON("/enroll")
+                ]);
+                document.getElementById("welcome-title").textContent =
+                    "Welcome, " + (user.name || "learner") + ".";
+                renderCourses(courses, staff, enrollments);
+                renderEnrollments(enrollments);
+            } catch (error) {
+                message.textContent = error.message;
+                message.className = "message error";
+            }
+        }
+
+        loadStudentDashboard();
+    </script>
+</body>
+</html>

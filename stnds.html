@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage student accounts | Learn Flow</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-nav">
+            <a class="app-brand" href="/admin/dashboard"><img src="/image/img1.png" alt=""> Learn Flow <span class="badge">Admin</span></a>
+            <nav class="app-links" aria-label="Administrator navigation">
+                <a href="/admin/dashboard">Overview</a><a href="/course.html">Courses</a>
+                <a href="/staff.html">Staff</a><a href="/certificate.html">Certificates</a>
+                <a href="/enroll.html">Enrollments</a><a href="/stnds.html" aria-current="page">Students</a>
+                <a href="/logout">Sign out</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-wrap">
+        <div class="page-heading">
+            <div><div class="eyebrow">Account directory</div><h1>Manage students</h1><p>Create and update student sign-in accounts. Passwords are never shown in the student list.</p></div>
+        </div>
+        <section class="panel">
+            <h2 id="form-title">Add a student</h2>
+            <form id="student-form">
+                <div class="form-grid">
+                    <label class="field">Student ID (optional)<input type="number" id="id" min="1" placeholder="Auto assigned if blank"></label>
+                    <label class="field">Student name<input type="text" id="name" maxlength="25" required></label>
+                    <label class="field">Username<input type="text" id="username" maxlength="20" required></label>
+                    <label class="field">Password<input type="password" id="password" minlength="8" maxlength="128" autocomplete="new-password"></label>
+                    <label class="field">Email<input type="email" id="email" maxlength="25"></label>
+                    <label class="field">Phone<input type="tel" id="phone" inputmode="numeric"></label>
+                </div>
+                <div class="form-actions">
+                    <button id="save-student" type="submit">Add student</button>
+                    <button class="secondary" type="button" id="clear-student">Clear</button>
+                </div>
+            </form>
+            <p class="message">Use at least 8 characters. When editing, leave the password blank to keep the current password.</p>
+            <p id="message" class="message" role="status"></p>
+        </section>
+        <section class="panel">
+            <div class="toolbar"><h2>Student accounts</h2><button class="secondary" id="refresh-students" type="button">Refresh</button></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead>
+                    <tbody id="StudentTable"><tr><td colspan="6">Loading students...</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("student-form");
+        const table = document.getElementById("StudentTable");
+        const message = document.getElementById("message");
+        let students = [];
+        let editingId = null;
+
+        async function request(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "/admin.html";
+                }
+                throw new Error(result.detail || result.message || "Request failed.");
+            }
+            return result;
+        }
+
+        function setMessage(text, isError) {
+            message.textContent = text;
+            message.className = "message" + (isError ? " error" : " success");
+        }
+
+        function addCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value == null || value === "" ? "—" : String(value);
+            row.appendChild(cell);
+            return cell;
+        }
+
+        async function loadStudents() {
+            students = await request("/student");
+            table.replaceChildren();
+            if (!students.length) {
+                const row = table.insertRow();
+                addCell(row, "No student accounts found.");
+                row.cells[0].colSpan = 6;
+                return;
+            }
+            students.forEach((student) => {
+                const row = table.insertRow();
+                addCell(row, student.stnd_id);
+                addCell(row, student.stnd_name);
+                addCell(row, student.uname);
+                addCell(row, student.email);
+                addCell(row, student.phno);
+                const actions = document.createElement("td");
+                const edit = document.createElement("button");
+                edit.type = "button";
+                edit.className = "edit";
+                edit.textContent = "Edit";
+                edit.addEventListener("click", () => editStudent(student));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "danger";
+                remove.textContent = "Delete";
+                remove.addEventListener("click", () => deleteStudent(student.stnd_id));
+                actions.append(edit, remove);
+                row.appendChild(actions);
+            });
+        }
+
+        function editStudent(student) {
+            editingId = Number(student.stnd_id);
+            document.getElementById("form-title").textContent = "Update student";
+            document.getElementById("save-student").textContent = "Save changes";
+            document.getElementById("id").value = student.stnd_id;
+            document.getElementById("id").readOnly = true;
+            document.getElementById("name").value = student.stnd_name || "";
+            document.getElementById("username").value = student.uname || "";
+            document.getElementById("password").value = "";
+            document.getElementById("email").value = student.email || "";
+            document.getElementById("phone").value = student.phno || "";
+            window.scrollTo({top: 0, behavior: "smooth"});
+        }
+
+        function resetForm() {
+            form.reset();
+            editingId = null;
+            document.getElementById("id").readOnly = false;
+            document.getElementById("form-title").textContent = "Add a student";
+            document.getElementById("save-student").textContent = "Add student";
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) {
+                return;
+            }
+            const password = document.getElementById("password").value;
+            if (editingId === null && !password) {
+                setMessage("Enter a password for the new student.", true);
+                return;
+            }
+            const phone = document.getElementById("phone").value.trim();
+            const payload = {
+                stnd_name: document.getElementById("name").value.trim(),
+                uname: document.getElementById("username").value.trim(),
+                email: document.getElementById("email").value.trim() || null,
+                phno: phone ? Number(phone) : null,
+                ...(password ? {password} : {})
+            };
+            const idValue = document.getElementById("id").value;
+            if (editingId === null && idValue) {
+                payload.stnd_id = Number(idValue);
+            }
+            try {
+                const method = editingId === null ? "POST" : "PUT";
+                const url = editingId === null ? "/student" : "/student/" + editingId;
+                const result = await request(url, {
+                    method,
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+                setMessage(result.message, false);
+                resetForm();
+                await loadStudents();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        });
+
+        async function deleteStudent(studentId) {
+            if (!window.confirm("Delete this student account?")) {
+                return;
+            }
+            try {
+                const result = await request("/student/" + studentId, {method: "DELETE"});
+                setMessage(result.message, false);
+                await loadStudents();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        }
+
+        document.getElementById("clear-student").addEventListener("click", resetForm);
+        document.getElementById("refresh-students").addEventListener("click", () => {
+            loadStudents().catch((error) => setMessage(error.message, true));
+        });
+        loadStudents().catch((error) => setMessage(error.message, true));
+    </script>
+</body>
+</html>

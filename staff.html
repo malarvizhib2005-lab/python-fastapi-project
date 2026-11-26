@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage staff | Learn Flow</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-nav">
+            <a class="app-brand" href="/admin/dashboard"><img src="/image/img1.png" alt=""> Learn Flow <span class="badge">Admin</span></a>
+            <nav class="app-links" aria-label="Administrator navigation">
+                <a href="/admin/dashboard">Overview</a><a href="/course.html">Courses</a>
+                <a href="/staff.html" aria-current="page">Staff</a><a href="/certificate.html">Certificates</a>
+                <a href="/enroll.html">Enrollments</a><a href="/stnds.html">Students</a><a href="/logout">Sign out</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-wrap">
+        <div class="page-heading">
+            <div><div class="eyebrow">Instructor directory</div><h1>Manage staff</h1><p>Add staff profiles, then assign their ID to a course so students can see the right instructor. The existing Python course uses staff ID 1.</p></div>
+        </div>
+        <section class="panel">
+            <h2 id="form-title">Add a staff member</h2>
+            <form id="staff-form">
+                <div class="form-grid">
+                    <label class="field">Staff ID<input type="number" id="id" min="1" required></label>
+                    <label class="field">Name<input type="text" id="name" maxlength="20" required></label>
+                    <label class="field">Email<input type="email" id="em" maxlength="25"></label>
+                    <label class="field">Phone<input type="tel" id="ph" inputmode="numeric"></label>
+                    <label class="field">Specialization<input type="text" id="sp" maxlength="25" required></label>
+                    <label class="field">Experience<input type="text" id="exp" maxlength="25" placeholder="e.g. 5 years"></label>
+                </div>
+                <div class="form-actions">
+                    <button id="save-staff" type="submit">Add staff member</button>
+                    <button class="secondary" type="button" id="clear-staff">Clear</button>
+                </div>
+            </form>
+            <p id="message" class="message" role="status"></p>
+        </section>
+        <section class="panel">
+            <div class="toolbar"><h2>Staff profiles</h2><button class="secondary" id="refresh-staff" type="button">Refresh</button></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Specialization</th><th>Experience</th><th>Actions</th></tr></thead>
+                    <tbody id="StaffTable"><tr><td colspan="7">Loading staff...</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("staff-form");
+        const table = document.getElementById("StaffTable");
+        const message = document.getElementById("message");
+        let editingId = null;
+
+        async function request(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "/admin.html";
+                }
+                throw new Error(result.detail || result.message || "Request failed.");
+            }
+            return result;
+        }
+
+        function setMessage(text, isError) {
+            message.textContent = text;
+            message.className = "message" + (isError ? " error" : " success");
+        }
+
+        function addCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value == null || value === "" ? "—" : String(value);
+            row.appendChild(cell);
+            return cell;
+        }
+
+        async function loadStaff() {
+            const staff = await request("/staff");
+            table.replaceChildren();
+            if (!staff.length) {
+                const row = table.insertRow();
+                addCell(row, "No staff profiles yet. Add the instructor assigned to your existing course.");
+                row.cells[0].colSpan = 7;
+                return;
+            }
+            staff.forEach((member) => {
+                const row = table.insertRow();
+                addCell(row, member.staff_id);
+                addCell(row, member.staff_name);
+                addCell(row, member.email);
+                addCell(row, member.phno);
+                addCell(row, member.specialization);
+                addCell(row, member.experiences);
+                const actions = document.createElement("td");
+                const edit = document.createElement("button");
+                edit.type = "button";
+                edit.className = "edit";
+                edit.textContent = "Edit";
+                edit.addEventListener("click", () => editStaff(member));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "danger";
+                remove.textContent = "Delete";
+                remove.addEventListener("click", () => deleteStaff(member.staff_id));
+                actions.append(edit, remove);
+                row.appendChild(actions);
+            });
+        }
+
+        function editStaff(member) {
+            editingId = Number(member.staff_id);
+            document.getElementById("form-title").textContent = "Update staff member";
+            document.getElementById("save-staff").textContent = "Save changes";
+            document.getElementById("id").value = member.staff_id;
+            document.getElementById("id").readOnly = true;
+            document.getElementById("name").value = member.staff_name || "";
+            document.getElementById("em").value = member.email || "";
+            document.getElementById("ph").value = member.phno || "";
+            document.getElementById("sp").value = member.specialization || "";
+            document.getElementById("exp").value = member.experiences || "";
+            window.scrollTo({top: 0, behavior: "smooth"});
+        }
+
+        function resetForm() {
+            form.reset();
+            editingId = null;
+            document.getElementById("id").readOnly = false;
+            document.getElementById("form-title").textContent = "Add a staff member";
+            document.getElementById("save-staff").textContent = "Add staff member";
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) {
+                return;
+            }
+            const phone = document.getElementById("ph").value.trim();
+            const payload = {
+                staff_id: Number(document.getElementById("id").value),
+                staff_name: document.getElementById("name").value.trim(),
+                email: document.getElementById("em").value.trim() || null,
+                phno: phone ? Number(phone) : null,
+                specialization: document.getElementById("sp").value.trim(),
+                experiences: document.getElementById("exp").value.trim() || null
+            };
+            try {
+                const method = editingId === null ? "POST" : "PUT";
+                const url = editingId === null ? "/staff" : "/staff/" + editingId;
+                const result = await request(url, {
+                    method,
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+                setMessage(result.message, false);
+                resetForm();
+                await loadStaff();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        });
+
+        async function deleteStaff(staffId) {
+            if (!window.confirm("Delete this staff profile?")) {
+                return;
+            }
+            try {
+                const result = await request("/staff/" + staffId, {method: "DELETE"});
+                setMessage(result.message, false);
+                await loadStaff();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        }
+
+        document.getElementById("clear-staff").addEventListener("click", resetForm);
+        document.getElementById("refresh-staff").addEventListener("click", () => {
+            loadStaff().catch((error) => setMessage(error.message, true));
+        });
+        loadStaff().catch((error) => setMessage(error.message, true));
+    </script>
+</body>
+</html>

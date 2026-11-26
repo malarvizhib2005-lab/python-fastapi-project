@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage courses | Learn Flow</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-nav">
+            <a class="app-brand" href="/admin/dashboard"><img src="/image/img1.png" alt=""> Learn Flow <span class="badge">Admin</span></a>
+            <nav class="app-links" aria-label="Administrator navigation">
+                <a href="/admin/dashboard">Overview</a><a href="/course.html" aria-current="page">Courses</a>
+                <a href="/staff.html">Staff</a><a href="/certificate.html">Certificates</a>
+                <a href="/enroll.html">Enrollments</a><a href="/stnds.html">Students</a><a href="/logout">Sign out</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-wrap">
+        <div class="page-heading">
+            <div><div class="eyebrow">Course catalog</div><h1>Manage courses</h1><p>Add or update courses in the database. Assign each course to an existing staff profile.</p></div>
+        </div>
+        <section class="panel">
+            <h2 id="form-title">Add a course</h2>
+            <form id="course-form">
+                <div class="form-grid">
+                    <label class="field">Course ID<input type="number" id="id" min="1" required></label>
+                    <label class="field">Course name<input type="text" id="name" maxlength="20" required></label>
+                    <label class="field">Technology<input type="text" id="tech" maxlength="50" required></label>
+                    <label class="field">Duration<input type="text" id="cd" maxlength="20" placeholder="e.g. 8 weeks" required></label>
+                    <label class="field">Instructor<select id="staff" required><option value="">Loading staff...</option></select></label>
+                    <label class="field">Price<input type="number" id="cost" min="0" step="0.01" required></label>
+                    <label class="field">Starts on<input type="date" id="csd"></label>
+                    <label class="field">Ends on<input type="date" id="ccd"></label>
+                    <label class="field" style="grid-column:1/-1">Description<textarea id="des" rows="3" maxlength="50" required></textarea></label>
+                </div>
+                <div class="form-actions">
+                    <button id="save-course" type="submit">Add course</button>
+                    <button class="secondary" type="button" id="clear-course">Clear</button>
+                </div>
+            </form>
+            <p id="message" class="message" role="status"></p>
+        </section>
+        <section class="panel">
+            <div class="toolbar"><h2>Courses in database</h2><button class="secondary" id="refresh-courses" type="button">Refresh</button></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>ID</th><th>Course</th><th>Technology</th><th>Duration</th><th>Staff ID</th><th>Price</th><th>Start</th><th>End</th><th>Actions</th></tr></thead>
+                    <tbody id="CourseTable"><tr><td colspan="9">Loading courses...</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("course-form");
+        const table = document.getElementById("CourseTable");
+        const message = document.getElementById("message");
+        const staffSelect = document.getElementById("staff");
+        let courses = [];
+        let editingId = null;
+
+        async function request(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "/admin.html";
+                }
+                throw new Error(result.detail || result.message || "Request failed.");
+            }
+            return result;
+        }
+
+        function setMessage(text, isError) {
+            message.textContent = text;
+            message.className = "message" + (isError ? " error" : " success");
+        }
+
+        function addCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value == null ? "—" : String(value);
+            row.appendChild(cell);
+            return cell;
+        }
+
+        async function loadStaffOptions() {
+            const staff = await request("/staff");
+            staffSelect.replaceChildren(new Option("Choose an instructor", ""));
+            staff.forEach((member) => {
+                staffSelect.add(new Option(
+                    member.staff_id + " — " + member.staff_name,
+                    member.staff_id
+                ));
+            });
+        }
+
+        async function loadCourses() {
+            courses = await request("/course");
+            table.replaceChildren();
+            if (!courses.length) {
+                addCell(table.insertRow(), "No courses found. Add your first course above.");
+                table.rows[0].cells[0].colSpan = 9;
+                return;
+            }
+            courses.forEach((course) => {
+                const row = table.insertRow();
+                addCell(row, course.course_id);
+                addCell(row, course.course_name);
+                addCell(row, course.technology);
+                addCell(row, course.course_duration);
+                addCell(row, course.staff_id);
+                addCell(row, course.cost == null ? "—" : Number(course.cost).toLocaleString());
+                addCell(row, course.course_st ? String(course.course_st).slice(0, 10) : "—");
+                addCell(row, course.course_ed ? String(course.course_ed).slice(0, 10) : "—");
+                const actions = document.createElement("td");
+                const edit = document.createElement("button");
+                edit.type = "button";
+                edit.className = "edit";
+                edit.textContent = "Edit";
+                edit.addEventListener("click", () => editCourse(course));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "danger";
+                remove.textContent = "Delete";
+                remove.addEventListener("click", () => deleteCourse(course.course_id));
+                actions.append(edit, remove);
+                row.appendChild(actions);
+            });
+        }
+
+        function editCourse(course) {
+            editingId = Number(course.course_id);
+            document.getElementById("form-title").textContent = "Update course";
+            document.getElementById("save-course").textContent = "Save changes";
+            document.getElementById("id").value = course.course_id;
+            document.getElementById("id").readOnly = true;
+            document.getElementById("name").value = course.course_name || "";
+            document.getElementById("des").value = course.description || "";
+            document.getElementById("tech").value = course.technology || "";
+            document.getElementById("cd").value = course.course_duration || "";
+            document.getElementById("staff").value = course.staff_id || "";
+            document.getElementById("cost").value = course.cost == null ? "" : course.cost;
+            document.getElementById("csd").value = course.course_st ? String(course.course_st).slice(0, 10) : "";
+            document.getElementById("ccd").value = course.course_ed ? String(course.course_ed).slice(0, 10) : "";
+            window.scrollTo({top: 0, behavior: "smooth"});
+        }
+
+        function resetForm() {
+            form.reset();
+            editingId = null;
+            document.getElementById("id").readOnly = false;
+            document.getElementById("form-title").textContent = "Add a course";
+            document.getElementById("save-course").textContent = "Add course";
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) {
+                return;
+            }
+            const payload = {
+                course_id: Number(document.getElementById("id").value),
+                course_name: document.getElementById("name").value.trim(),
+                description: document.getElementById("des").value.trim(),
+                technology: document.getElementById("tech").value.trim(),
+                course_duration: document.getElementById("cd").value.trim(),
+                staff_id: Number(staffSelect.value),
+                cost: Number(document.getElementById("cost").value),
+                course_st: document.getElementById("csd").value || null,
+                course_ed: document.getElementById("ccd").value || null
+            };
+            try {
+                const method = editingId === null ? "POST" : "PUT";
+                const url = editingId === null ? "/course" : "/course/" + editingId;
+                const result = await request(url, {
+                    method,
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+                setMessage(result.message, false);
+                resetForm();
+                await loadCourses();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        });
+
+        async function deleteCourse(courseId) {
+            if (!window.confirm("Delete this course?")) {
+                return;
+            }
+            try {
+                const result = await request("/course/" + courseId, {method: "DELETE"});
+                setMessage(result.message, false);
+                await loadCourses();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        }
+
+        document.getElementById("clear-course").addEventListener("click", resetForm);
+        document.getElementById("refresh-courses").addEventListener("click", () => {
+            loadCourses().catch((error) => setMessage(error.message, true));
+        });
+
+        Promise.all([loadStaffOptions(), loadCourses()]).catch((error) => {
+            setMessage(error.message, true);
+        });
+    </script>
+</body>
+</html>

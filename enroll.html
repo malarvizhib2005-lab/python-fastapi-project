@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student enrollments | Learn Flow</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-nav">
+            <a class="app-brand" href="/admin/dashboard"><img src="/image/img1.png" alt=""> Learn Flow <span class="badge">Admin</span></a>
+            <nav class="app-links" aria-label="Administrator navigation">
+                <a href="/admin/dashboard">Overview</a><a href="/course.html">Courses</a>
+                <a href="/staff.html">Staff</a><a href="/certificate.html">Certificates</a>
+                <a href="/enroll.html" aria-current="page">Enrollments</a><a href="/stnds.html">Students</a><a href="/logout">Sign out</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-wrap">
+        <div class="page-heading">
+            <div><div class="eyebrow">Student activity</div><h1>Course enrollments</h1><p>Read-only view of students enrolled in courses. Enrollment records are created by students.</p></div>
+            <span class="badge green">Admin view only</span>
+        </div>
+        <section class="panel">
+            <div class="toolbar">
+                <h2 id="enrollment-summary">Loading enrollments...</h2>
+                <button class="secondary" id="refresh-enrollments" type="button">Refresh</button>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Enrollment</th><th>Student</th><th>Email</th><th>Course</th><th>Amount</th><th>Status</th><th>Enrolled on</th></tr></thead>
+                    <tbody id="EnrollTable"><tr><td colspan="7">Loading...</td></tr></tbody>
+                </table>
+            </div>
+            <p id="message" class="message" role="status"></p>
+        </section>
+    </main>
+    <script>
+        const table = document.getElementById("EnrollTable");
+        const message = document.getElementById("message");
+
+        async function loadEnrollments() {
+            const response = await fetch("/enroll");
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "/admin.html";
+                    return;
+                }
+                throw new Error(result.detail || "Unable to load enrollments.");
+            }
+            table.replaceChildren();
+            document.getElementById("enrollment-summary").textContent =
+                result.length + (result.length === 1 ? " enrollment" : " enrollments");
+            if (!result.length) {
+                const row = table.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 7;
+                cell.className = "empty-state";
+                cell.textContent = "No students have enrolled yet.";
+                return;
+            }
+            result.forEach((enrollment) => {
+                const row = table.insertRow();
+                [
+                    enrollment.enroll_id,
+                    (enrollment.stnd_name || "Student") + " (#" + enrollment.stnd_id + ")",
+                    enrollment.email,
+                    (enrollment.course_name || "Course") + " (#" + enrollment.course_id + ")",
+                    enrollment.amount == null ? "—" : Number(enrollment.amount).toLocaleString(),
+                    enrollment.status,
+                    enrollment.enroll_date ? String(enrollment.enroll_date).slice(0, 10) : "—"
+                ].forEach((value) => {
+                    const cell = row.insertCell();
+                    cell.textContent = value == null || value === "" ? "—" : String(value);
+                });
+            });
+        }
+
+        document.getElementById("refresh-enrollments").addEventListener("click", () => {
+            message.textContent = "";
+            loadEnrollments().catch((error) => {
+                message.textContent = error.message;
+                message.className = "message error";
+            });
+        });
+        loadEnrollments().catch((error) => {
+            message.textContent = error.message;
+            message.className = "message error";
+        });
+    </script>
+</body>
+</html>

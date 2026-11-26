@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage certificates | Learn Flow</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-nav">
+            <a class="app-brand" href="/admin/dashboard"><img src="/image/img1.png" alt=""> Learn Flow <span class="badge">Admin</span></a>
+            <nav class="app-links" aria-label="Administrator navigation">
+                <a href="/admin/dashboard">Overview</a><a href="/course.html">Courses</a>
+                <a href="/staff.html">Staff</a><a href="/certificate.html" aria-current="page">Certificates</a>
+                <a href="/enroll.html">Enrollments</a><a href="/stnds.html">Students</a><a href="/logout">Sign out</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-wrap">
+        <div class="page-heading">
+            <div><div class="eyebrow">Learner achievements</div><h1>Manage certificates</h1><p>Create and maintain completion records for students and courses.</p></div>
+        </div>
+        <section class="panel">
+            <h2 id="form-title">Add a certificate</h2>
+            <form id="certificate-form">
+                <div class="form-grid">
+                    <label class="field">Certificate ID<input type="number" id="id" min="1" required></label>
+                    <label class="field">Course ID<input type="number" id="course-id" min="1" required></label>
+                    <label class="field">Course name<input type="text" id="course-name" maxlength="20" required></label>
+                    <label class="field">Student ID<input type="number" id="student-id" min="1" required></label>
+                    <label class="field">Student name<input type="text" id="student-name" maxlength="20" required></label>
+                    <label class="field">Completed on<input type="date" id="completed-date" required></label>
+                    <label class="field">Technology<input type="text" id="technology" maxlength="50" required></label>
+                    <label class="field">Performance<input type="text" id="performance" maxlength="50" required></label>
+                    <label class="field" style="grid-column:1/-1">Description<input type="text" id="description" maxlength="50" required></label>
+                </div>
+                <div class="form-actions">
+                    <button id="save-certificate" type="submit">Add certificate</button>
+                    <button class="secondary" type="button" id="clear-certificate">Clear</button>
+                </div>
+            </form>
+            <p id="message" class="message" role="status"></p>
+        </section>
+        <section class="panel">
+            <div class="toolbar"><h2>Certificate records</h2><button class="secondary" id="refresh-certificates" type="button">Refresh</button></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>ID</th><th>Course</th><th>Student</th><th>Description</th><th>Completed</th><th>Technology</th><th>Performance</th><th>Actions</th></tr></thead>
+                    <tbody id="CertificateTable"><tr><td colspan="8">Loading certificates...</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("certificate-form");
+        const table = document.getElementById("CertificateTable");
+        const message = document.getElementById("message");
+        let certificates = [];
+        let editingId = null;
+
+        async function request(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = "/admin.html";
+                }
+                throw new Error(result.detail || result.message || "Request failed.");
+            }
+            return result;
+        }
+
+        function setMessage(text, isError) {
+            message.textContent = text;
+            message.className = "message" + (isError ? " error" : " success");
+        }
+
+        function addCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value == null ? "—" : String(value);
+            row.appendChild(cell);
+            return cell;
+        }
+
+        async function loadCertificates() {
+            certificates = await request("/certificate");
+            table.replaceChildren();
+            if (!certificates.length) {
+                const row = table.insertRow();
+                addCell(row, "No certificate records yet.");
+                row.cells[0].colSpan = 8;
+                return;
+            }
+            certificates.forEach((certificate) => {
+                const row = table.insertRow();
+                addCell(row, certificate.cert_id);
+                addCell(row, certificate.course_name + " (#" + certificate.course_id + ")");
+                addCell(row, certificate.stnd_name + " (#" + certificate.stnd_id + ")");
+                addCell(row, certificate.description);
+                addCell(row, certificate.course_cd);
+                addCell(row, certificate.technology);
+                addCell(row, certificate.performs);
+                const actions = document.createElement("td");
+                const edit = document.createElement("button");
+                edit.type = "button";
+                edit.className = "edit";
+                edit.textContent = "Edit";
+                edit.addEventListener("click", () => editCertificate(certificate));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "danger";
+                remove.textContent = "Delete";
+                remove.addEventListener("click", () => deleteCertificate(certificate.cert_id));
+                actions.append(edit, remove);
+                row.appendChild(actions);
+            });
+        }
+
+        function editCertificate(certificate) {
+            editingId = Number(certificate.cert_id);
+            document.getElementById("form-title").textContent = "Update certificate";
+            document.getElementById("save-certificate").textContent = "Save changes";
+            document.getElementById("id").value = certificate.cert_id;
+            document.getElementById("id").readOnly = true;
+            document.getElementById("course-id").value = certificate.course_id;
+            document.getElementById("course-name").value = certificate.course_name || "";
+            document.getElementById("student-id").value = certificate.stnd_id;
+            document.getElementById("student-name").value = certificate.stnd_name || "";
+            document.getElementById("description").value = certificate.description || "";
+            document.getElementById("completed-date").value = certificate.course_cd ? String(certificate.course_cd).slice(0, 10) : "";
+            document.getElementById("technology").value = certificate.technology || "";
+            document.getElementById("performance").value = certificate.performs || "";
+            window.scrollTo({top: 0, behavior: "smooth"});
+        }
+
+        function resetForm() {
+            form.reset();
+            editingId = null;
+            document.getElementById("id").readOnly = false;
+            document.getElementById("form-title").textContent = "Add a certificate";
+            document.getElementById("save-certificate").textContent = "Add certificate";
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) {
+                return;
+            }
+            const payload = {
+                cert_id: Number(document.getElementById("id").value),
+                course_id: Number(document.getElementById("course-id").value),
+                course_name: document.getElementById("course-name").value.trim(),
+                stnd_id: Number(document.getElementById("student-id").value),
+                stnd_name: document.getElementById("student-name").value.trim(),
+                description: document.getElementById("description").value.trim(),
+                course_cd: document.getElementById("completed-date").value,
+                technology: document.getElementById("technology").value.trim(),
+                performs: document.getElementById("performance").value.trim()
+            };
+            try {
+                const method = editingId === null ? "POST" : "PUT";
+                const url = editingId === null ? "/certificate" : "/certificate/" + editingId;
+                const result = await request(url, {
+                    method,
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+                setMessage(result.message, false);
+                resetForm();
+                await loadCertificates();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        });
+
+        async function deleteCertificate(certificateId) {
+            if (!window.confirm("Delete this certificate record?")) {
+                return;
+            }
+            try {
+                const result = await request("/certificate/" + certificateId, {method: "DELETE"});
+                setMessage(result.message, false);
+                await loadCertificates();
+            } catch (error) {
+                setMessage(error.message, true);
+            }
+        }
+
+        document.getElementById("clear-certificate").addEventListener("click", resetForm);
+        document.getElementById("refresh-certificates").addEventListener("click", () => {
+            loadCertificates().catch((error) => setMessage(error.message, true));
+        });
+        loadCertificates().catch((error) => setMessage(error.message, true));
+    </script>
+</body>
+</html>

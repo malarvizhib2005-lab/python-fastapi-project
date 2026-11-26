@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#19152f">
+    <title>Administrator sign in | Learn Flow</title>
+    <style>
+        * { box-sizing:border-box; }
+        body { min-height:100vh; margin:0; padding:24px; display:grid; place-items:center; background:#f5f5fb; color:#19152f; font-family:Inter,Segoe UI,Arial,sans-serif; }
+        .card { width:min(460px,100%); padding:clamp(28px,6vw,48px); border:1px solid #eeedf4; border-radius:24px; background:white; box-shadow:0 24px 70px rgba(37,31,86,.12); }
+        .brand { display:flex; align-items:center; gap:11px; color:#19152f; font-size:19px; font-weight:800; text-decoration:none; }
+        .brand img { width:42px; height:42px; object-fit:cover; border-radius:50%; }
+        .icon { width:54px; height:54px; display:grid; place-items:center; margin:34px 0 20px; border-radius:16px; background:#f0efff; color:#6858df; font-size:24px; }
+        h1 { margin:0; font-size:32px; letter-spacing:-.04em; }
+        .subheading { margin:9px 0 27px; color:#77758b; line-height:1.6; }
+        label { display:block; margin:17px 0 8px; font-size:13px; font-weight:700; }
+        input { width:100%; min-height:50px; padding:0 14px; border:1px solid #dedde8; border-radius:10px; outline:none; color:#19152f; font:inherit; }
+        input:focus { border-color:#6858df; box-shadow:0 0 0 3px rgba(104,88,223,.13); }
+        .password-field { position:relative; }
+        .password-field input { padding-right:86px; }
+        .password-toggle { position:absolute; top:9px; right:8px; width:auto; min-height:32px; margin:0; padding:0 10px; border:0; background:transparent; color:#6858df; font-size:12px; }
+        .password-toggle:hover { transform:none; background:#f0efff; }
+        button { width:100%; min-height:52px; margin-top:25px; border:0; border-radius:11px; background:#6858df; color:white; font:inherit; font-weight:800; cursor:pointer; transition:background .2s ease,transform .2s ease; }
+        button:hover { transform:translateY(-1px); background:#5848cf; }
+        .back { display:block; margin-top:23px; color:#6858df; font-size:14px; font-weight:700; text-align:center; text-decoration:none; }
+        .back:hover { text-decoration:underline; }
+        .notice { margin:16px 0 0; padding:12px 14px; border-radius:10px; background:#fff0f1; color:#a52e3c; font-size:13px; line-height:1.55; }
+        .notice[hidden] { display:none; }
+        @media (max-width:480px) { body { padding:14px; } .card { border-radius:19px; } }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <a class="brand" href="/">
+            <img src="/image/img1.png" alt="">
+            <span>Learn Flow</span>
+        </a>
+        <div class="icon" aria-hidden="true">⌘</div>
+        <h1>Welcome back</h1>
+        <p class="subheading">Sign in to your administrator account to manage your learning platform.</p>
+        <form action="/admin" method="post">
+            <label for="uname">Administrator name</label>
+            <input id="uname" type="text" name="uname" placeholder="Enter your username" autocomplete="username" required>
+            <label for="password">Password</label>
+            <div class="password-field">
+                <input id="password" type="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                <button class="password-toggle" id="password-toggle" type="button" aria-controls="password" aria-pressed="false">Show</button>
+            </div>
+            <button type="submit">Sign in to dashboard <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="notice" id="login-notice" role="alert" hidden>Username or password is incorrect. Please try again.</p>
+        <a class="back" href="/login.html">← Choose a different portal</a>
+    </main>
+    <script>
+        const passwordInput = document.getElementById("password");
+        const passwordToggle = document.getElementById("password-toggle");
+
+        passwordToggle.addEventListener("click", () => {
+            const isVisible = passwordInput.type === "password";
+            passwordInput.type = isVisible ? "text" : "password";
+            passwordToggle.textContent = isVisible ? "Hide" : "Show";
+            passwordToggle.setAttribute("aria-pressed", String(isVisible));
+        });
+            if (new URLSearchParams(window.location.search).get("error") === "invalid") {
+                document.getElementById("login-notice").hidden = false;
+            }
+    </script>
+</body>
+</html>

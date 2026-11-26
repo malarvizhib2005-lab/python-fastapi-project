@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn Flow - Online Course Management</title>
+    <style>
+        :root { --ink:#17132e; --violet:#6558d9; --blue:#4e73df; --paper:#f7f8fc; --yellow:#ffc95c; --muted:#77758b; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { font-family:Inter,Segoe UI,Arial,sans-serif; color:var(--ink); background:var(--paper); }
+        a { color:inherit; }
+        .container { width:min(1180px, calc(100% - 40px)); margin:auto; }
+        header { position:absolute; inset:0 0 auto; z-index:20; }
+        .navbar { height:88px; display:flex; align-items:center; justify-content:space-between; color:white; }
+        .brand { display:flex; align-items:center; gap:12px; text-decoration:none; font-size:21px; font-weight:800; }
+        .brand img { width:48px; height:48px; object-fit:cover; border-radius:50%; background:white; }
+        nav { display:flex; align-items:center; gap:34px; }
+        nav a { position:relative; text-decoration:none; font-size:15px; font-weight:700; opacity:.86; transition:opacity .2s ease; }
+        nav a:hover { opacity:1; }
+        nav .login-btn { background:white; color:var(--ink); text-decoration:none; padding:12px 22px; border-radius:10px; font-weight:800; box-shadow:0 8px 24px rgba(0,0,0,.12); }
+        .menu-btn { display:none; border:0; background:transparent; color:white; font-size:28px; cursor:pointer; }
+        .hero { min-height:730px; display:grid; align-items:center; position:relative; overflow:hidden; background:
+            linear-gradient(90deg,rgba(20,16,47,.95) 0%,rgba(30,25,74,.78) 48%,rgba(20,16,47,.24) 100%),
+            url("/image/image1%20(2).png") center/cover no-repeat; }
+        .hero:after { content:""; position:absolute; width:520px; height:520px; right:-150px; bottom:-310px; border:90px solid rgba(255,255,255,.08); border-radius:50%; }
+        .hero-content { position:relative; z-index:2; max-width:650px; padding-top:55px; color:white; }
+        .eyebrow { display:inline-flex; align-items:center; gap:9px; color:#e8e5ff; font-weight:800; letter-spacing:.12em; text-transform:uppercase; font-size:12px; margin-bottom:18px; }
+        .eyebrow:before { content:""; width:35px; height:2px; background:var(--yellow); }
+        h1 { max-width:620px; font-size:clamp(48px,7vw,78px); line-height:.98; letter-spacing:-.055em; }
+        h1 span { color:#bdb7ff; }
+        .hero p { max-width:580px; margin:24px 0 32px; color:#ddddeb; font-size:18px; line-height:1.75; }
+        .hero-actions { display:flex; gap:14px; flex-wrap:wrap; }
+        .button { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:54px; padding:0 24px; border-radius:12px; text-decoration:none; font-weight:800; transition:transform .2s ease,background .2s ease; }
+        .button.primary { background:var(--yellow); color:var(--ink); box-shadow:0 12px 28px rgba(255,201,92,.22); }
+        .button.primary:hover { transform:translateY(-2px); }
+        .button.secondary { border:1px solid rgba(255,255,255,.32); color:white; }
+        .hero-note { position:absolute; z-index:2; top:40%; right:max(28px,calc((100% - 1180px)/2)); width:215px; padding:18px; border:1px solid rgba(255,255,255,.36); border-radius:18px; color:white; background:rgba(255,255,255,.14); box-shadow:0 18px 45px rgba(15,12,43,.2); backdrop-filter:blur(14px); }
+        .hero-note strong { display:block; font-size:15px; }
+        .hero-note span { display:block; margin-top:7px; color:#e1dff0; font-size:12px; line-height:1.55; }
+        .hero-note-icon { width:38px; height:38px; display:grid; place-items:center; margin-bottom:14px; border-radius:12px; background:var(--yellow); color:var(--ink); font-size:19px; font-weight:900; }
+        .stats { position:absolute; z-index:4; right:max(20px, calc((100% - 1180px)/2)); bottom:-45px; display:flex; background:white; border-radius:18px; box-shadow:0 18px 50px rgba(31,27,74,.12); }
+        .stat { min-width:180px; padding:24px 30px; border-right:1px solid #ececf5; }
+        .stat:last-child { border-right:0; }
+        .stat strong { display:block; font-size:28px; }
+        .stat span { color:var(--muted); font-size:13px; }
+        section { scroll-margin-top:30px; }
+        .courses { padding:130px 0 90px; }
+        .section-heading { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:34px; }
+        .section-heading .kicker { color:var(--violet); font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:.12em; }
+        .section-heading h2 { margin-top:8px; font-size:clamp(34px,5vw,48px); letter-spacing:-.04em; }
+        .course-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+        .course-card { position:relative; overflow:hidden; background:white; border:1px solid #e9e9f2; border-radius:20px; padding:28px; transition:transform .25s ease,box-shadow .25s ease; }
+        .course-card:hover { transform:translateY(-6px); box-shadow:0 18px 40px rgba(54,48,112,.1); }
+        .course-icon { width:54px; height:54px; display:grid; place-items:center; border-radius:14px; background:#efefff; color:var(--violet); font-size:24px; font-weight:900; }
+        .course-card:nth-child(2) .course-icon { background:#fff4e3; color:#c88118; }
+        .course-card:nth-child(3) .course-icon { background:#e8f7f2; color:#258767; }
+        .course-card h3 { margin:24px 0 10px; font-size:21px; }
+        .course-card p { min-height:72px; color:var(--muted); line-height:1.6; }
+        .course-meta { display:flex; justify-content:space-between; margin-top:22px; padding-top:18px; border-top:1px solid #eeeef4; color:#77758b; font-size:13px; }
+        .empty-state { grid-column:1/-1; padding:32px 18px; border:1px dashed #d9d7e6; border-radius:14px; color:var(--muted); text-align:center; line-height:1.6; }
+        .feature { position:relative; overflow:hidden; background:linear-gradient(120deg,#19152f,#24204a); color:white; padding:100px 0; }
+        .feature-grid { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:70px; }
+        .feature-image { height:430px; border-radius:24px; background:url("/image/img1.png") center/cover no-repeat; }
+        .feature-copy h2 { font-size:clamp(38px,5vw,56px); line-height:1.05; letter-spacing:-.04em; }
+        .feature-copy p { margin:20px 0 28px; color:#bbb9c9; line-height:1.8; }
+        .checks { display:grid; gap:14px; }
+        .checks span { display:flex; align-items:center; gap:12px; font-weight:700; }
+        .checks span:before { content:"✓"; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:var(--yellow); color:var(--ink); }
+        footer { background:#100d21; color:#aeadba; padding:28px 0; }
+        .footer-row { display:flex; justify-content:space-between; align-items:center; }
+        a:focus-visible,button:focus-visible { outline:3px solid #ffcf6a; outline-offset:4px; }
+        @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; } }
+        @media (max-width:900px) {
+            .menu-btn { display:block; }
+            nav { position:absolute; top:76px; right:20px; width:220px; display:none; flex-direction:column; align-items:stretch; gap:0; padding:10px; border-radius:14px; background:white; color:var(--ink); box-shadow:0 18px 50px rgba(0,0,0,.18); }
+            nav.open { display:flex; }
+            nav a { padding:12px 14px; }
+            .hero { min-height:660px; }
+            .hero-note { display:none; }
+            .stats { left:20px; right:20px; justify-content:center; }
+            .stat { min-width:0; flex:1; text-align:center; }
+            .course-grid { grid-template-columns:1fr 1fr; }
+            .feature-grid { grid-template-columns:1fr; }
+        }
+        @media (max-width:600px) {
+            .container { width:min(100% - 30px,1180px); }
+            .navbar { height:76px; }
+            .brand img { width:42px; height:42px; }
+            .hero { min-height:620px; align-items:start; }
+            .hero-content { padding-top:145px; }
+            h1 { font-size:50px; }
+            .hero p { font-size:16px; }
+            .stats { bottom:-34px; }
+            .stat { padding:18px 8px; }
+            .stat strong { font-size:21px; }
+            .stat span { font-size:11px; }
+            .courses { padding-top:100px; }
+            .section-heading { align-items:flex-start; flex-direction:column; }
+            .course-grid { grid-template-columns:1fr; }
+            .feature { padding:70px 0; }
+            .feature-image { height:280px; }
+            .footer-row { flex-direction:column; gap:8px; text-align:center; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container navbar">
+            <a class="brand" href="/">
+                <img src="/image/img1.png" alt="Learn Flow">
+                <span>Learn Flow</span>
+            </a>
+            <nav id="main-nav" aria-label="Main navigation">
+                <a href="/">Home</a>
+                <a href="#courses">Courses</a>
+                <a href="#staff">Staff</a>
+                <a href="/student.html">Enroll</a>
+                <a href="/login.html" class="login-btn">Login</a>
+            </nav>
+            <button class="menu-btn" id="menu-btn" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero" id="home">
+            <div class="container">
+                <div class="hero-content">
+                    <div class="eyebrow">Build skills for what's next</div>
+                    <h1>Learn today.<br><span>Lead tomorrow.</span></h1>
+                    <p>Build practical skills with expert-led courses, a focused learning path, and the support you need to reach your goals.</p>
+                    <div class="hero-actions">
+                        <a class="button primary" href="#courses">Explore courses <span aria-hidden="true">→</span></a>
+                        <a class="button secondary" href="/login.html">Student login</a>
+                    </div>
+                </div>
+                <aside class="hero-note" aria-label="Learn Flow benefit">
+                    <div class="hero-note-icon" aria-hidden="true">✦</div>
+                    <strong>Learn at your pace</strong>
+                    <span>Practical lessons. Clear milestones. Skills you can put to work.</span>
+                </aside>
+            </div>
+            <div class="stats" aria-label="Platform statistics">
+                <div class="stat"><strong id="course-count">—</strong><span>Courses in catalog</span></div>
+                <div class="stat"><strong>Learn</strong><span>with course instructors</span></div>
+                <div class="stat"><strong>Grow</strong><span>at your own pace</span></div>
+            </div>
+        </section>
+
+        <section class="courses" id="courses">
+            <div class="container">
+                <div class="section-heading">
+                    <div>
+                        <div class="kicker">Popular programs</div>
+                        <h2>Choose your learning path</h2>
+                    </div>
+                </div>
+                <div class="course-grid" id="public-course-grid" aria-live="polite">
+                    <p class="empty-state">Loading courses from the catalog...</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="feature" id="staff">
+            <div class="container feature-grid">
+                <div class="feature-image" role="img" aria-label="Learn Flow course platform"></div>
+                <div class="feature-copy">
+                    <div class="eyebrow">Why Learn Flow</div>
+                    <h2>Education designed around you.</h2>
+                    <p>Follow a clear curriculum, learn from experienced instructors, and measure progress with structured courses and certifications.</p>
+                    <div class="checks">
+                        <span>Expert instructors</span>
+                        <span>Flexible study schedules</span>
+                        <span>Verified completion certificates</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-row">
+            <span>© 2026 Learn Flow</span>
+            <span>Online Course Management System</span>
+        </div>
+    </footer>
+
+    <script>
+        async function loadPublicCourses() {
+            const grid = document.getElementById("public-course-grid");
+            try {
+                const response = await fetch("/course");
+                if (!response.ok) {
+                    throw new Error("Course catalog is temporarily unavailable.");
+                }
+                const courses = await response.json();
+                document.getElementById("course-count").textContent = courses.length;
+                grid.replaceChildren();
+                if (!courses.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty-state";
+                    empty.textContent = "There are no courses in the catalog yet. Please check back soon.";
+                    grid.appendChild(empty);
+                    return;
+                }
+                courses.forEach((course) => {
+                    const card = document.createElement("article");
+                    card.className = "course-card";
+                    const icon = document.createElement("div");
+                    icon.className = "course-icon";
+                    icon.textContent = (course.course_name || "C").charAt(0).toUpperCase();
+                    card.appendChild(icon);
+                    const title = document.createElement("h3");
+                    title.textContent = course.course_name || "Course";
+                    card.appendChild(title);
+                    const description = document.createElement("p");
+                    description.textContent = course.description || "Course details will be added soon.";
+                    card.appendChild(description);
+                    const meta = document.createElement("div");
+                    meta.className = "course-meta";
+                    const duration = document.createElement("span");
+                    duration.textContent = course.course_duration || "Flexible schedule";
+                    const price = document.createElement("span");
+                    price.textContent = new Intl.NumberFormat("en-IN", {
+                        style: "currency",
+                        currency: "INR",
+                        maximumFractionDigits: 0
+                    }).format(Number(course.cost || 0));
+                    meta.append(duration, price);
+                    card.appendChild(meta);
+                    const enrollLink = document.createElement("a");
+                    enrollLink.className = "button primary";
+                    enrollLink.href = "/login.html";
+                    enrollLink.textContent = "Sign in to enroll";
+                    card.appendChild(enrollLink);
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                grid.replaceChildren();
+                const message = document.createElement("p");
+                message.className = "empty-state";
+                message.textContent = error.message;
+                grid.appendChild(message);
+            }
+        }
+
+        const menuButton = document.getElementById("menu-btn");
+        const navigation = document.getElementById("main-nav");
+
+        menuButton.addEventListener("click", () => {
+            const isOpen = navigation.classList.toggle("open");
+            menuButton.setAttribute("aria-expanded", String(isOpen));
+        });
+
+        navigation.querySelectorAll("a").forEach((link) => {
+            link.addEventListener("click", () => {
+                navigation.classList.remove("open");
+                menuButton.setAttribute("aria-expanded", "false");
+            });
+        });
+
+        loadPublicCourses();
+    </script>
+</body>
+</html>
